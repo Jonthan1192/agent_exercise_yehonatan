@@ -32,15 +32,19 @@ class avalon_st_driver;
         // The byte that the current word starts from.
         int current_byte = 0;
 
-        // Used to calc empty
+        // Used to calc empty.
         int remaining;
+      
+      	// Prevents using previous cycle eop.
+      	bit is_eop;
 
         // Loop through all the words of the packet.
         while (current_byte < packet.size()) begin
             vif.valid <= 1;
             vif.sop   <= current_byte == 0;
-            vif.eop   <= (current_byte + vif.DATA_WIDTH_IN_BYTES) >= packet.size();
-            if (vif.eop) begin
+            is_eop    = (current_byte + vif.DATA_WIDTH_IN_BYTES) >= packet.size();
+            vif.eop   <= is_eop;
+            if (is_eop) begin
                 vif.data  <= {>>8{packet[current_byte : $]}};
                 remaining = packet.size() - current_byte;
                 vif.empty <= vif.DATA_WIDTH_IN_BYTES - remaining;
