@@ -4,8 +4,8 @@
 // Description : Top TB module for Agent Exercise.
 // -----------------------------------------------------------------------------
 
-// TODO - Add includes here!
 `include "avalon_st_if.sv"
+`include "avalon_st_driver.sv"
 
 module tb ();
 
@@ -14,6 +14,7 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // Data width.
     localparam int unsigned DATA_WIDTH_IN_BYTES = 4;
+    localparam int unsigned READY_PERCECNTAGE   = 50;
 
     //////////////////////////////////////////////////////////////////////////////
     // Declarations.
@@ -22,10 +23,14 @@ module tb ();
     bit clk;
     bit rst_n;
 
+    // Packet variable
+    byte packet[$];
+
     // Interface declaration.
     avalon_st_if#(.DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES)) vif (.clk(clk));
 
-    // TODO - Declare your classes here.
+    // Classes declarations.
+    avalon_st_driver driver = new(vif);
 
     //////////////////////////////////////////////////////////////////////////////
     // General processes.
@@ -59,7 +64,26 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // Test logic.
     initial begin
-    	
-    	// TODO - Insert TB logic here.
+        packet = {8'hDE, 8'hED, 8'hBE, 8'hEF};
+    	driver.drive_packet(packet);
+
+        packet = {8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'hEE};
+    	driver.drive_packet(packet);
+
+        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55};
+    	driver.drive_packet(packet);
+
+        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66};
+    	driver.drive_packet(packet);
+
+        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77};
+    	driver.drive_packet(packet);
+
+        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77, 8'h88};
+    	driver.drive_packet(packet);
+    end
+
+    initial begin
+    	driver.drive_ready(READY_PERCECNTAGE);
     end
 endmodule

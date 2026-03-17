@@ -41,18 +41,18 @@ class avalon_st_driver;
             vif.sop   <= current_byte == 0;
             vif.eop   <= (current_byte + vif.DATA_WIDTH_IN_BYTES) >= packet.size();
             if (vif.eop) begin
-                vif.data  <= packet[current_byte : $];
+                vif.data  <= {>>8{packet[current_byte : $]}};
                 remaining = packet.size() - current_byte;
                 vif.empty <= vif.DATA_WIDTH_IN_BYTES - remaining;
             end else begin
-                vif.data  <= packet[current_byte +: vif.DATA_WIDTH_IN_BYTES];
+                vif.data  <= {>>8{packet[current_byte : current_byte + vif.DATA_WIDTH_IN_BYTES - 1]}};
                 vif.empty <= 0;
             end
 
             // Waiting for ready to move to the next word.
-            while (!vif.rdy) begin
+            do begin
                 @(posedge vif.clk);
-            end
+            end while (!vif.rdy);
 
             // Increment the current byte.
             current_byte += vif.DATA_WIDTH_IN_BYTES;
@@ -67,14 +67,14 @@ class avalon_st_driver;
 
         // Safety check.
         if (ready_probability < 0 || ready_probability > 100) begin
-            $fatal("Ready probability must be in range 0 to 100!");
+            $fatal(1, "Ready probability must be in range 0 to 100!");
         end
-
+        
         // This runs forever and updates rdy every clock cycle.
         forever begin
-            value = $urandom_range(0,99);
-            vif.rdy <= ready_probability > value;
-            @(posedge clk);
+            random_value = $urandom_range(0,99);
+            vif.rdy <= ready_probability > random_value;
+            @(posedge vif.clk);
         end
     endtask
 endclass
