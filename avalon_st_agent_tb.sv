@@ -30,7 +30,7 @@ module tb ();
     avalon_st_if#(.DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES)) vif (.clk(clk));
 
     // Classes declarations.
-    avalon_st_driver driver = new(vif);
+    avalon_st_driver#(.DATA_WIDTH_IN_BYTES(vif.DATA_WIDTH_IN_BYTES), .IS_MASTER(1'b1), .IS_SLAVE(1'b1)) driver = new(vif);
 
     //////////////////////////////////////////////////////////////////////////////
     // General processes.
@@ -65,25 +65,22 @@ module tb ();
     // Test logic.
     initial begin
         packet = {8'hDE, 8'hED, 8'hBE, 8'hEF};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
 
         packet = {8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'hEE};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
 
         packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
 
         packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
 
         packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
 
         packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77, 8'h88};
-    	driver.drive_packet(packet);
+        driver.drive_master(packet);
     end
 
-    initial begin
-    	driver.drive_ready(READY_PERCECNTAGE);
-    end
 endmodule
