@@ -4,6 +4,8 @@
 // Description : Top TB module for Agent Exercise.
 // -----------------------------------------------------------------------------
 
+`timescale 1ns/1ps
+
 `include "avalon_st_if.sv"
 `include "avalon_st_driver.sv"
 
@@ -14,7 +16,8 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // Data width.
     localparam int unsigned DATA_WIDTH_IN_BYTES = 4;
-    localparam int unsigned READY_PERCECNTAGE   = 50;
+    localparam int unsigned READY_PERCECNTAGE   = 75;
+    localparam int unsigned VALID_PERCECNTAGE   = 75;
 
     //////////////////////////////////////////////////////////////////////////////
     // Declarations.
@@ -30,7 +33,13 @@ module tb ();
     avalon_st_if#(.DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES)) vif (.clk(clk));
 
     // Classes declarations.
-    avalon_st_driver#(.DATA_WIDTH_IN_BYTES(vif.DATA_WIDTH_IN_BYTES), .IS_MASTER(1'b1), .IS_SLAVE(1'b1)) driver = new(vif);
+    avalon_st_driver#(
+        .DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES),
+        .IS_MASTER(1'b1),
+        .IS_SLAVE(1'b1),
+        .VALID_PERCECNTAGE(VALID_PERCECNTAGE),
+        .READY_PERCECNTAGE(READY_PERCECNTAGE)
+    ) driver = new(vif);
 
     //////////////////////////////////////////////////////////////////////////////
     // General processes.
@@ -64,6 +73,9 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // Test logic.
     initial begin
+
+        wait (rst_n);
+
         packet = {8'hDE, 8'hED, 8'hBE, 8'hEF};
         driver.drive_master(packet);
 
@@ -81,6 +93,14 @@ module tb ();
 
         packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77, 8'h88};
         driver.drive_master(packet);
+
+        #20;
+        $stop;
+    end
+
+    initial begin
+        wait (rst_n);
+        driver.drive_slave();
     end
 
 endmodule
