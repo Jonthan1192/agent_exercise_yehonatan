@@ -33,49 +33,36 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
     /*-------------------------------------------------------------------------------
 	-- Functions and Tasks.
     -------------------------------------------------------------------------------*/
-	task drive_master(byte msg[$]);
-        
-        // The byte that the current word starts from.
-        int current_byte = 0;
+    function logic [$clog2(DATA_WIDTH_IN_BYTES)-1:0] calc_empty(int unsigned msg_length_bytes);
+        int remainder;
+        remainder = msg_length_bytes % DATA_WIDTH_IN_BYTES;
+        if (remainder == 0)
+            return 0;
+        return ((DATA_WIDTH_IN_BYTES - remainder));
+    endfunction
 
-        // Used to calc empty.
-        int remaining;
-      
-      	// Prevents using previous cycle eop.
-      	bit is_eop;
+    task drive_master(byte msg[$]);
 
         // Convert msg to a queue of words.
-        bit [DATA_WIDTH_IN_BYTES * $bits(byte) - 1 : 0] msg_words[$] = {<<8{msg}};
+        bit [DATA_WIDTH_IN_BYTES * $bits(byte) - 1 : 0] msg_words[$] = {>>8{msg}};
 
         // Loop through all the words of the msg.
         foreach (msg_words[i]) begin
-            $display("word[%0d] = %h", i, msg_words[i]);
-        end
-
-        @(vif.master_cb);
-
-        // Loop through all the words of the msg.
-        while (current_byte < msg.size()) begin
+            vif.CLEAR_MASTER_CB();
             vif.master_cb.valid <= 1'b1;
-            vif.master_cb.sop   <= current_byte == 0;
-            is_eop               = (current_byte + DATA_WIDTH_IN_BYTES) >= msg.size();
-            vif.master_cb.eop   <= is_eop;
-            if (is_eop) begin
-                vif.master_cb.data  <= {>>8{msg[current_byte : $]}};
-                remaining = msg.size() - current_byte;
-                vif.master_cb.empty <= DATA_WIDTH_IN_BYTES - remaining;
-            end else begin
-                vif.master_cb.data  <= {>>8{msg[current_byte : current_byte + DATA_WIDTH_IN_BYTES - 1]}};
-                vif.master_cb.empty <= 0;
+            vif.master_cb.sop   <= i == 0;
+            vif.master_cb.data  <= msg_words[i];
+            if (i == msg_words.size() - 1) begin
+                vif.master_cb.eop   <= 1'b1;
+                vif.master_cb.empty <= calc_empty(msg.size());
             end
 
             // Waiting for ready to move to the next word.
             @(this.vif.master_cb iff this.vif.master_cb.rdy);
-
-            // Increment the current byte.
-            current_byte += DATA_WIDTH_IN_BYTES;
         end
-        vif.master_cb.valid <= 0;
+
+        // Prepare for next clock, in case there wont be a call to the task
+        vif.CLEAR_MASTER_CB();
     endtask
 
     task automatic drive_slave();

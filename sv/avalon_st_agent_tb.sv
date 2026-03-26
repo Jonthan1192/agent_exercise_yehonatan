@@ -59,7 +59,7 @@ module tb ();
 
     // Timeout.
     initial begin
-        #(10000) $finish;
+        #(10000) $stop;
     end
 
     // Waves dump.
@@ -74,9 +74,9 @@ module tb ();
     // Test logic.
     initial begin
 
-        wait (rst_n);
+        @(posedge vif.clk iff rst_n);
 
-        packet = {8'hDE, 8'hED, 8'hBE, 8'hEF};
+        packet = {8'hDE, 8'hAD, 8'hBE, 8'hEF};
         driver.drive_master(packet);
 
         packet = {8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'hEE};
