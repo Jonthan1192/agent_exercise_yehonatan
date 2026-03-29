@@ -4,8 +4,6 @@
 // Description : Top TB module for Agent Exercise.
 // -----------------------------------------------------------------------------
 
-`timescale 1ns/1ps
-
 `include "avalon_st_if.sv"
 `include "avalon_st_driver.sv"
 
@@ -16,8 +14,15 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // Data width.
     localparam int unsigned DATA_WIDTH_IN_BYTES = 4;
+    localparam int unsigned MIN_MSG_SIZE_BYTES  = 1;
+    localparam int unsigned MAX_MSG_SIZE_BYTES  = 20;
+
+    // Valid and ready percentage
     localparam int unsigned READY_PERCECNTAGE   = 75;
     localparam int unsigned VALID_PERCECNTAGE   = 75;
+
+    // Num of messages to send
+    localparam int unsigned MSG_NUM             = 10;
 
     //////////////////////////////////////////////////////////////////////////////
     // Declarations.
@@ -26,8 +31,11 @@ module tb ();
     bit clk;
     bit rst_n;
 
-    // Packet variable
-    byte packet[$];
+    // Msg variable
+    byte msg[$];
+
+    // Msg size variable
+    int msg_size;
 
     // Interface declaration.
     avalon_st_if#(.DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES)) vif (.clk(clk));
@@ -36,14 +44,19 @@ module tb ();
     avalon_st_driver#(
         .DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES),
         .IS_MASTER(1'b1),
-        .IS_SLAVE(1'b1),
-        .VALID_PERCECNTAGE(VALID_PERCECNTAGE),
-        .READY_PERCECNTAGE(READY_PERCECNTAGE)
-    ) driver = new(vif);
+        .VALID_READY_PERCECNTAGE(VALID_PERCECNTAGE)
+    ) master_driver = new(vif);
+
+    avalon_st_driver#(
+        .DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES),
+        .IS_MASTER(1'b0),
+        .VALID_READY_PERCECNTAGE(READY_PERCECNTAGE)
+    ) slave_driver = new(vif);
 
     //////////////////////////////////////////////////////////////////////////////
     // General processes.
     //////////////////////////////////////////////////////////////////////////////
+
     // Generate clock.
     initial begin
         clk = 0;
@@ -71,36 +84,25 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     // TestBench Logic
     //////////////////////////////////////////////////////////////////////////////
-    // Test logic.
     initial begin
 
         @(posedge vif.clk iff rst_n);
 
-        packet = {8'hDE, 8'hAD, 8'hBE, 8'hEF};
-        driver.drive_master(packet);
-
-        packet = {8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'hEE};
-        driver.drive_master(packet);
-
-        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55};
-        driver.drive_master(packet);
-
-        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66};
-        driver.drive_master(packet);
-
-        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77};
-        driver.drive_master(packet);
-
-        packet = {8'h00, 8'h11, 8'h22, 8'h33, 8'h44, 8'h55, 8'h66, 8'h77, 8'h88};
-        driver.drive_master(packet);
+        for (int i = 0; i < MSG_NUM; i++) begin
+            msg_size = $urandom_range(MIN_MSG_SIZE_BYTES, MAX_MSG_SIZE_BYTES);
+            std::randomize(msg) with {
+                msg.size() == msg_size;
+            };
+            master_driver.drive_master(msg);
+        end
 
         #20;
         $stop;
     end
 
     initial begin
-        wait (rst_n);
-        driver.drive_slave();
+        @(posedge vif.clk iff rst_n);
+        slave_driver.drive_slave();
     end
 
 endmodule

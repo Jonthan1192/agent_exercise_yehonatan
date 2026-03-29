@@ -10,7 +10,7 @@
 `ifndef __AVALON_ST_DRIVER
 `define __AVALON_ST_DRIVER
 
-class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1'b1, bit IS_SLAVE = 1'b0, int unsigned READY_PERCECNTAGE = 100, int unsigned VALID_PERCECNTAGE = 100);
+class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1'b1, int unsigned VALID_READY_PERCECNTAGE = 100);
 
     /*-------------------------------------------------------------------------------
     -- Members.
@@ -24,7 +24,7 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
         this.vif = vif;
 
         // fork
-        //     if (IS_SLAVE) begin
+        //     if (!IS_MASTER) begin
         //         this.drive_slave();
         //     end
         // join_none
@@ -40,6 +40,13 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
             return 0;
         return ((DATA_WIDTH_IN_BYTES - remainder));
     endfunction
+  
+  	function bit randomize_valid_ready();
+        std::randomize(randomize_valid_ready) with {
+                randomize_valid_ready dist {0 := 100 - VALID_READY_PERCECNTAGE,
+                                     1 := VALID_READY_PERCECNTAGE};
+        };
+    endfunction
 
     task drive_master(byte msg[$]);
 
@@ -48,7 +55,13 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
 
         // Loop through all the words of the msg.
         foreach (msg_words[i]) begin
+            
+            // Valid percentage logic
             vif.CLEAR_MASTER_CB();
+            if (!randomize_valid_ready()) begin
+               @(this.vif.master_cb iff randomize_valid_ready());
+            end
+            
             vif.master_cb.valid <= 1'b1;
             vif.master_cb.sop   <= i == 0;
             vif.master_cb.data  <= msg_words[i];
@@ -66,15 +79,13 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
     endtask
 
     task automatic drive_slave();
+        bit randomized_rdy;
 
-        // Random value used to decide whether rdy will be asserted.
-        int random_value;
-        
         // This runs forever and updates rdy every clock cycle.
         forever begin
-            random_value = $urandom_range(0,99);
+            randomized_rdy = randomize_valid_ready();
+            vif.slave_cb.rdy <= randomized_rdy;
             @(vif.slave_cb);
-            vif.slave_cb.rdy <= READY_PERCECNTAGE > random_value;
         end
     endtask
 endclass
