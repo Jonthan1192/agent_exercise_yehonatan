@@ -55,13 +55,13 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
 
         // Loop through all the words of the msg.
         foreach (msg_words[i]) begin
-            
+
             // Valid percentage logic
             vif.CLEAR_MASTER_CB();
             if (!randomize_valid_ready()) begin
                @(this.vif.master_cb iff randomize_valid_ready());
             end
-            
+
             vif.master_cb.valid <= 1'b1;
             vif.master_cb.sop   <= i == 0;
             vif.master_cb.data  <= msg_words[i];
@@ -83,9 +83,9 @@ class avalon_st_driver #(int unsigned DATA_WIDTH_IN_BYTES = 4, bit IS_MASTER = 1
 
         // This runs forever and updates rdy every clock cycle.
         forever begin
+            @(vif.slave_cb);
             randomized_rdy = randomize_valid_ready();
             vif.slave_cb.rdy <= randomized_rdy;
-            @(vif.slave_cb);
         end
     endtask
 endclass

@@ -6,6 +6,7 @@
 
 `include "avalon_st_if.sv"
 `include "avalon_st_driver.sv"
+`include "avalon_st_monitor.sv"
 
 module tb ();
 
@@ -34,6 +35,12 @@ module tb ();
     // Msg variable
     byte msg[$];
 
+    // Msg from monitor
+    byte msg_from_monitor[$];
+
+    // Represents msg_from_monitor
+    string hex_str;
+
     // Msg size variable
     int msg_size;
 
@@ -52,6 +59,8 @@ module tb ();
         .IS_MASTER(1'b0),
         .VALID_READY_PERCECNTAGE(READY_PERCECNTAGE)
     ) slave_driver = new(vif);
+
+    avalon_st_monitor#(.DATA_WIDTH_IN_BYTES(DATA_WIDTH_IN_BYTES)) monitor = new(vif);
 
     //////////////////////////////////////////////////////////////////////////////
     // General processes.
@@ -86,7 +95,7 @@ module tb ();
     //////////////////////////////////////////////////////////////////////////////
     initial begin
 
-        @(posedge vif.clk iff rst_n);
+        @(vif.master_cb iff rst_n);
 
         for (int i = 0; i < MSG_NUM; i++) begin
             msg_size = $urandom_range(MIN_MSG_SIZE_BYTES, MAX_MSG_SIZE_BYTES);
@@ -101,8 +110,30 @@ module tb ();
     end
 
     initial begin
-        @(posedge vif.clk iff rst_n);
+        wait(rst_n);
         slave_driver.drive_slave();
+    end
+
+    initial begin
+        forever begin
+            // Wait until a message is available
+            wait (monitor.msg_queue.size() != 0);
+
+            // Pop the first message from the queue
+            msg_from_monitor = monitor.msg_queue.pop_front();
+
+            // Print the message as a single hex string
+            hex_str = "";
+            foreach (msg_from_monitor[i]) begin
+                hex_str = {hex_str, $sformatf("%02h", msg_from_monitor[i])};
+            end
+
+            $display("[%0t] Received message (%0d bytes): 0x%s", $time, msg_from_monitor.size(), hex_str);
+        end
+    end
+
+    initial begin
+        monitor.monitor_interface();
     end
 
 endmodule
